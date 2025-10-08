@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Scroll Quiz</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            min-height: 100vh;
+            color: #333;
+            overflow-x: hidden;
+            position: relative;
+            cursor: none;
+        }
+        .cursor-trail {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 999;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 40px;
+            color: white;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.7);
+        }
+        .quiz-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+        .quiz-card {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 60px 0;
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+            border: 2px solid transparent;
+            background: linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.9)) padding-box, linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1) border-box;
+            opacity: 0;
+            transform: translateY(100px) scale(0.8) rotateY(90deg);
+            position: relative;
+            pointer-events: none;
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .quiz-card:hover {
+            box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4);
+        }
+        .quiz-card.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .quiz-card h2 {
+            font-size: 28px;
+            margin-bottom: 25px;
+            color: #333;
+            text-align: center;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .options {
+            display: grid;
+            gap: 15px;
+        }
+        .option-btn {
+            padding: 18px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(45deg, #e0e0e0, #f5f5f5);
+            font-size: 18px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            color: #333;
+            transition: transform 0.3s, box-shadow 0.3s, background 0.3s;
+        }
+        .option-btn:hover:not(:disabled) {
+            transform: scale(1.05);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            background: linear-gradient(45deg, #4ecdc4, #ff6b6b);
+            color: white;
+        }
+        .option-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .option-btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.4s, height 0.4s;
+        }
+        .option-btn:active::after {
+            width: 200px;
+            height: 200px;
+        }
+        .correct {
+            background: linear-gradient(45deg, #28a745, #34c759) !important;
+            color: white;
+            box-shadow: 0 0 25px #28a745;
+            animation: glow 1s ease-in-out infinite alternate;
+        }
+        .incorrect {
+            background: linear-gradient(45deg, #dc3545, #e4606d) !important;
+            color: white;
+            box-shadow: 0 0 25px #dc3545;
+            animation: shake 0.5s;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            50% { transform: translateX(10px); }
+            75% { transform: translateX(-10px); }
+        }
+        @keyframes glow {
+            from { box-shadow: 0 0 20px #28a745; }
+            to { box-shadow: 0 0 30px #28a745, 0 0 40px #28a745; }
+        }
+        .emoji {
+            position: absolute;
+            font-size: 24px;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .progress-container {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 85%;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        .progress-bar {
+            height: 25px;
+            background: linear-gradient(90deg, #4ecdc4, #ff6b6b, #45b7d1);
+            border-radius: 12px;
+            width: 0%;
+            box-shadow: 0 0 15px rgba(78, 205, 196, 0.7);
+            transition: width 0.5s ease;
+        }
+        .score {
+            margin-top: 15px;
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+        }
+        .surprise {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotateY(90deg);
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            color: white;
+            padding: 25px;
+            border-radius: 20px;
+            z-index: 1000;
+            display: none;
+            text-align: center;
+            max-width: 350px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+        }
+        .surprise h3 {
+            margin: 0 0 15px;
+            font-size: 22px;
+        }
+        .final-score {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: linear-gradient(45deg, #4ecdc4, #ff6b6b, #45b7d1);
+            color: white;
+            padding: 40px;
+            border-radius: 25px;
+            text-align: center;
+            max-width: 600px;
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+            z-index: 1000;
+            backdrop-filter: blur(15px);
+        }
+        .final-score h2 {
+            font-size: 36px;
+            margin: 0 0 20px;
+        }
+        .final-score p {
+            font-size: 22px;
+            font-style: italic;
+            margin: 0 0 20px;
+        }
+        .final-score .trophy {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+        .replay-btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(45deg, #28a745, #34c759);
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .replay-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        }
+        .next-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(45deg, #4ecdc4, #ff6b6b);
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+            display: none;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .next-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+        .music-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            cursor: pointer;
+            z-index: 100;
+            color: white;
+            font-size: 16px;
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Let's Check Your Knowledge</h1>
+    </div>
+    <div class="music-toggle" id="music-toggle">🔊 Music: Off</div>
+    <div class="quiz-container" id="quiz-container"></div>
+    <div class="progress-container">
+        <div class="progress-bar" id="progress-bar"></div>
+        <div class="score">Score: <span id="score">0</span>/<span id="total">30</span> (<span id="progress-percent">0%</span>)</div>
+    </div>
+    <div class="surprise" id="surprise">
+        <h3>🎉 Fun Surprise!</h3>
+        <p id="surprise-text"></p>
+    </div>
+    <div class="final-score" id="final-score">
+        <div class="trophy" id="trophy"></div>
+        <h2>Your Final Score: <span id="final-score-value"></span>/30</h2>
+        <p id="final-quote"></p>
+        <button class="replay-btn" onclick="location.reload()">Play Again</button>
+    </div>
+
+    <audio id="bg-music" src="https://cdn.pixabay.com/audio/2023/03/22/02-26-08-45_3.mp3" loop></audio>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <script>
+        gsap.registerPlugin(ScrollTrigger);
+
+        const quizData = [
+            {
+                question: "What is the capital of France?",
+                options: ["Paris", "London", "Berlin", "Madrid"],
+                correct: 0,
+                surprise: "France produces over 1,000 tons of cheese annually!"
+            },
+            {
+                question: "Which planet is known as the Red Planet?",
+                options: ["Venus", "Mars", "Jupiter", "Saturn"],
+                correct: 1,
+                surprise: "Mars has the largest canyon in the solar system!"
+            },
+            {
+                question: "What is 2 + 2?",
+                options: ["3", "4", "5", "6"],
+                correct: 1
+            },
+            {
+                question: "Which animal is the king of the jungle?",
+                options: ["Tiger", "Elephant", "Lion", "Giraffe"],
+                correct: 2,
+                surprise: "Lions sleep up to 20 hours a day!"
+            },
+            {
+                question: "What color is a ripe banana?",
+                options: ["Blue", "Yellow", "Red", "Green"],
+                correct: 1
+            },
+            {
+                question: "Which is the largest ocean on Earth?",
+                options: ["Atlantic", "Indian", "Arctic", "Pacific"],
+                correct: 3
+            },
+            {
+                question: "What is the chemical formula for water?",
+                options: ["H2O", "CO2", "O2", "N2"],
+                correct: 0,
+                surprise: "Your body is about 60% water!"
+            },
+            {
+                question: "Which bird is famous for its colorful tail?",
+                options: ["Penguin", "Ostrich", "Peacock", "Eagle"],
+                correct: 2
+            },
+            {
+                question: "What is the tallest mountain in the world?",
+                options: ["K2", "Everest", "Kangchenjunga", "Lhotse"],
+                correct: 1
+            },
+            {
+                question: "Which fruit is known for its pungent smell?",
+                options: ["Mango", "Apple", "Banana", "Durian"],
+                correct: 3,
+                surprise: "Some call durian the smelliest fruit on Earth!"
+            },
+            {
+                question: "Which country is famous for the pyramids?",
+                options: ["Mexico", "Egypt", "Peru", "India"],
+                correct: 1,
+                surprise: "The Great Pyramid was the tallest structure for over 3,800 years!"
+            },
+            {
+                question: "What is the smallest planet in our solar system?",
+                options: ["Mercury", "Venus", "Mars", "Pluto"],
+                correct: 0
+            },
+            {
+                question: "Which element is a diamond made of?",
+                options: ["Gold", "Carbon", "Silver", "Iron"],
+                correct: 1,
+                surprise: "Diamonds are the hardest naturally occurring substance!"
+            },
+            {
+                question: "What is the longest river in the world?",
+                options: ["Amazon", "Nile", "Yangtze", "Mississippi"],
+                correct: 1
+            },
+            {
+                question: "Which movie features a lion named Simba?",
+                options: ["Madagascar", "The Jungle Book", "The Lion King", "Zootopia"],
+                correct: 2,
+                surprise: "The Lion King was inspired by Shakespeare's Hamlet!"
+            },
+            {
+                question: "What gas do plants absorb from the air?",
+                options: ["Oxygen", "Nitrogen", "Carbon Dioxide", "Helium"],
+                correct: 2
+            },
+            {
+                question: "Which country is known as the Land of the Rising Sun?",
+                options: ["China", "Japan", "Thailand", "Korea"],
+                correct: 1,
+                surprise: "Japan has over 6,800 islands!"
+            },
+            {
+                question: "What is the main ingredient in chocolate?",
+                options: ["Sugar", "Cocoa", "Milk", "Flour"],
+                correct: 1
+            },
+            {
+                question: "Which animal is the fastest land animal?",
+                options: ["Lion", "Cheetah", "Horse", "Antelope"],
+                correct: 1,
+                surprise: "Cheetahs can reach speeds up to 60 mph!"
+            },
+            {
+                question: "What is the capital of Brazil?",
+                options: ["Rio de Janeiro", "São Paulo", "Brasília", "Salvador"],
+                correct: 2
+            },
+            {
+                question: "Which instrument has 88 keys?",
+                options: ["Guitar", "Piano", "Violin", "Drums"],
+                correct: 1
+            },
+            {
+                question: "What is the largest mammal in the world?",
+                options: ["Elephant", "Blue Whale", "Giraffe", "Rhinoceros"],
+                correct: 1,
+                surprise: "A blue whale's heart is as big as a car!"
+            },
+            {
+                question: "Which gas makes up most of Earth's atmosphere?",
+                options: ["Oxygen", "Nitrogen", "Carbon Dioxide", "Argon"],
+                correct: 1
+            },
+            {
+                question: "What is the name of Harry Potter's owl?",
+                options: ["Hedwig", "Crookshanks", "Scabbers", "Fawkes"],
+                correct: 0,
+                surprise: "Hedwig was named after a saint!"
+            },
+            {
+                question: "Which continent is the Sahara Desert on?",
+                options: ["Asia", "Africa", "Australia", "South America"],
+                correct: 1
+            },
+            {
+                question: "What is the boiling point of water in Celsius?",
+                options: ["0", "50", "100", "150"],
+                correct: 2
+            },
+            {
+                question: "Which band created the song 'Bohemian Rhapsody'?",
+                options: ["The Beatles", "Queen", "The Rolling Stones", "Led Zeppelin"],
+                correct: 1,
+                surprise: "Bohemian Rhapsody was recorded in six studios!"
+            },
+            {
+                question: "What is the hardest substance in the human body?",
+                options: ["Bone", "Enamel", "Cartilage", "Muscle"],
+                correct: 1
+            },
+            {
+                question: "Which country is home to the kangaroo?",
+                options: ["Australia", "New Zealand", "South Africa", "Brazil"],
+                correct: 0,
+                surprise: "Kangaroos can hop at speeds up to 40 mph!"
+            },
+            {
+                question: "What is the name of the world's largest coral reef?",
+                options: ["Great Barrier Reef", "Belize Barrier Reef", "Red Sea Coral Reef", "Apo Reef"],
+                correct: 0
+            }
+        ];
+
+        let score = 0;
+        const totalQuestions = quizData.length;
+        const quizContainer = document.getElementById('quiz-container');
+        const progressBar = document.getElementById('progress-bar');
+        const scoreDisplay = document.getElementById('score');
+        const totalDisplay = document.getElementById('total');
+        const progressPercent = document.getElementById('progress-percent');
+        const surpriseElement = document.getElementById('surprise');
+        const surpriseText = document.getElementById('surprise-text');
+        const musicToggle = document.getElementById('music-toggle');
+        const bgMusic = document.getElementById('bg-music');
+        const finalScoreElement = document.getElementById('final-score');
+        const finalScoreValue = document.getElementById('final-score-value');
+        const finalQuote = document.getElementById('final-quote');
+        const trophy = document.getElementById('trophy');
+        totalDisplay.textContent = totalQuestions;
+
+        // Audio handling
+        let audioContextReady = false;
+        function playSound(frequency, duration, type = 'sine') {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            oscillator.frequency.value = frequency;
+            oscillator.type = type;
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration);
+        }
+        function playVictorySound() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator1 = audioContext.createOscillator();
+            const oscillator2 = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            oscillator1.connect(gainNode);
+            oscillator2.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            oscillator1.frequency.value = 1000;
+            oscillator2.frequency.value = 1200;
+            oscillator1.type = 'triangle';
+            oscillator2.type = 'triangle';
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            oscillator1.start(audioContext.currentTime);
+            oscillator2.start(audioContext.currentTime + 0.1);
+            oscillator1.stop(audioContext.currentTime + 0.5);
+            oscillator2.stop(audioContext.currentTime + 0.5);
+        }
+        function initAudio() {
+            if (!audioContextReady) {
+                playSound(0, 0);
+                audioContextReady = true;
+            }
+        }
+
+        let isMusicPlaying = false;
+        musicToggle.addEventListener('click', () => {
+            initAudio();
+            if (isMusicPlaying) {
+                bgMusic.pause();
+                musicToggle.textContent = '🔊 Music: Off';
+                isMusicPlaying = false;
+            } else {
+                bgMusic.play().catch(() => console.log("Background music blocked by browser"));
+                musicToggle.textContent = '🔇 Music: On';
+                isMusicPlaying = true;
+            }
+        });
+
+        // Cursor trail effect
+        const cursorTrail = document.createElement('div');
+        cursorTrail.classList.add('cursor-trail');
+        document.body.appendChild(cursorTrail);
+        document.addEventListener('mousemove', (e) => {
+            gsap.to(cursorTrail, {
+                x: e.clientX - 5,
+                y: e.clientY - 5,
+                opacity: 0.5,
+                duration: 0.3,
+                ease: "power2.out"
+            });
+            setTimeout(() => {
+                gsap.to(cursorTrail, { opacity: 0, duration: 0.5 });
+            }, 300);
+        });
+
+        // Background particles
+        function createParticles() {
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('cursor-trail');
+                particle.style.width = `${Math.random() * 5 + 3}px`;
+                particle.style.height = particle.style.width;
+                particle.style.background = `rgba(255, 255, 255, ${Math.random() * 0.3 + 0.2})`;
+                document.body.appendChild(particle);
+                gsap.to(particle, {
+                    x: Math.random() * window.innerWidth,
+                    y: Math.random() * window.innerHeight,
+                    opacity: Math.random() * 0.3 + 0.1,
+                    scale: Math.random() * 0.5 + 0.5,
+                    duration: Math.random() * 10 + 5,
+                    repeat: -1,
+                    yoyo: true,
+                    ease: "sine.inOut",
+                    delay: Math.random() * 2
+                });
+            }
+        }
+        createParticles();
+
+        // Generate quiz cards
+        quizData.forEach((q, index) => {
+            const card = document.createElement('div');
+            card.classList.add('quiz-card');
+            card.id = `card-${index}`;
+            card.innerHTML = `
+                <h2>${index + 1}. ${q.question}</h2>
+                <div class="options">
+                    ${q.options.map((option, i) => `<button class="option-btn" data-index="${i}">${option}</button>`).join('')}
+                </div>
+                <button class="next-btn" style="display: none;">Next Question</button>
+            `;
+            quizContainer.appendChild(card);
+
+            // Only show first card initially
+            if (index === 0) {
+                gsap.to(card, {
+                    opacity: 1,
+                    y: 0,
+                    scale: 1,
+                    rotateY: 0,
+                    duration: 1.2,
+                    ease: "back.out(1.7)",
+                    onComplete: () => card.classList.add('active')
+                });
+            }
+        });
+
+        // Determine quote based on score
+        function getQuote(score) {
+            if (score <= 10) {
+                return "Every step is progress—keep shining and try again!";
+            } else if (score <= 20) {
+                return "Fantastic effort! You're a trivia star in the making!";
+            } else {
+                return "You're a trivia legend! Bask in your glorious victory!";
+            }
+        }
+
+        // Handle option clicks
+        quizContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('option-btn') && !e.target.disabled) {
+                initAudio();
+                const card = e.target.closest('.quiz-card');
+                const questionIndex = parseInt(card.id.split('-')[1]);
+                const selectedIndex = parseInt(e.target.dataset.index);
+                const correctIndex = quizData[questionIndex].correct;
+                const buttons = card.querySelectorAll('.option-btn');
+                const nextBtn = card.querySelector('.next-btn');
+
+                // Animate button click
+                gsap.to(e.target, { scale: 0.95, duration: 0.1, yoyo: true, repeat: 1 });
+
+                // Disable all buttons in this card
+                buttons.forEach(btn => btn.disabled = true);
+
+                if (selectedIndex === correctIndex) {
+                    score++;
+                    scoreDisplay.textContent = score;
+                    e.target.classList.add('correct');
+                    playSound(800, 0.3, 'triangle');
+                    // Confetti
+                    confetti({
+                        particleCount: 150,
+                        spread: 80,
+                        origin: { y: 0.6 },
+                        colors: ['#28a745', '#4ecdc4', '#ff6b6b', '#ffd700'],
+                        shapes: ['star', 'circle', 'square']
+                    });
+                    // Floating emojis
+                    const emojis = ['🎉', '⭐', '👍', '🌟', '🎊', '🚀'];
+                    emojis.forEach((emojiChar, i) => {
+                        setTimeout(() => {
+                            const emoji = document.createElement('span');
+                            emoji.classList.add('emoji');
+                            emoji.textContent = emojiChar;
+                            emoji.style.left = `${Math.random() * 80 + 10}%`;
+                            emoji.style.top = `${Math.random() * 50 + 20}%`;
+                            card.appendChild(emoji);
+                            gsap.to(emoji, {
+                                y: -150,
+                                x: (Math.random() - 0.5) * 100,
+                                rotation: (Math.random() - 0.5) * 90,
+                                scale: Math.random() * 0.5 + 0.5,
+                                opacity: 0,
+                                duration: 2.5,
+                                ease: "power2.out",
+                                onComplete: () => emoji.remove()
+                            });
+                        }, i * 150);
+                    });
+                } else {
+                    e.target.classList.add('incorrect');
+                    playSound(300, 0.4, 'sawtooth');
+                    setTimeout(() => {
+                        buttons[correctIndex].classList.add('correct');
+                    }, 500);
+                }
+
+                // Update progress bar and percentage
+                const progress = ((questionIndex + 1) / totalQuestions) * 100;
+                gsap.to(progressBar, { width: `${progress}%`, duration: 0.8, ease: "power3.out" });
+                progressPercent.textContent = `${Math.round(progress)}%`;
+
+                // Show next button or final score
+                if (questionIndex < totalQuestions - 1) {
+                    nextBtn.style.display = 'block';
+                    gsap.fromTo(nextBtn, 
+                        { opacity: 0, y: 20 }, 
+                        { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }
+                    );
+                } else {
+                    // Show final score
+                    finalScoreValue.textContent = score;
+                    finalQuote.textContent = getQuote(score);
+                    trophy.textContent = score > 20 ? '🏆' : '';
+                    finalScoreElement.style.display = 'block';
+                    gsap.timeline()
+                        .fromTo(finalScoreElement, 
+                            { scale: 0, opacity: 0, rotateY: 90 }, 
+                            { scale: 1, opacity: 1, rotateY: 0, duration: 1, ease: "back.out(1.7)" }
+                        )
+                        .to(finalScoreElement, {
+                            y: -20,
+                            duration: 0.5,
+                            ease: "power2.inOut",
+                            yoyo: true,
+                            repeat: 1
+                        });
+                    if (score > 20) {
+                        playVictorySound();
+                        confetti({
+                            particleCount: 300,
+                            spread: 100,
+                            origin: { y: 0.5 },
+                            colors: ['#28a745', '#4ecdc4', '#ff6b6b', '#ffd700', '#45b7d1'],
+                            shapes: ['star', 'circle', 'square'],
+                            scalar: 1.5
+                        });
+                    }
+                }
+
+                // Show surprise (50% chance if exists)
+                if (quizData[questionIndex].surprise && Math.random() < 0.5) {
+                    surpriseText.textContent = quizData[questionIndex].surprise;
+                    surpriseElement.style.display = 'block';
+                    gsap.fromTo(surpriseElement, 
+                        { scale: 0, opacity: 0, rotateY: 90, rotation: -10 }, 
+                        { scale: 1, opacity: 1, rotateY: 0, rotation: 0, duration: 0.8, ease: "back.out(1.7)" }
+                    );
+                    gsap.to(surpriseElement, {
+                        rotation: 5,
+                        yoyo: true,
+                        repeat: 3,
+                        duration: 0.3,
+                        ease: "power1.inOut",
+                        delay: 0.8
+                    });
+                    confetti({
+                        particleCount: 50,
+                        spread: 30,
+                        origin: { y: 0.5, x: 0.5 },
+                        colors: ['#ffd700', '#ff6b6b'],
+                        scalar: 0.8
+                    });
+                    setTimeout(() => {
+                        gsap.to(surpriseElement, { 
+                            scale: 0, opacity: 0, rotateY: -90, duration: 0.6, ease: "back.in(1.7)", 
+                            onComplete: () => { surpriseElement.style.display = 'none'; }
+                        });
+                    }, 3500);
+                }
+
+                // Dynamic background gradient
+                gsap.to('body', {
+                    background: `linear-gradient(45deg, hsl(${(questionIndex * 36) % 360}, 70%, 60%), hsl(${((questionIndex + 1) * 36) % 360}, 70%, 60%), hsl(${((questionIndex + 2) * 36) % 360}, 70%, 60%))`,
+                    duration: 1.5,
+                    ease: "power2.inOut"
+                });
+            } else if (e.target.classList.contains('next-btn')) {
+                const card = e.target.closest('.quiz-card');
+                const questionIndex = parseInt(card.id.split('-')[1]);
+                const nextCard = document.getElementById(`card-${questionIndex + 1}`);
+                if (nextCard) {
+                    gsap.to(nextCard, {
+                        opacity: 1,
+                        y: 0,
+                        scale: 1,
+                        rotateY: 0,
+                        duration: 1.2,
+                        ease: "back.out(1.7)",
+                        onComplete: () => nextCard.classList.add('active')
+                    });
+                    gsap.to(card, {
+                        opacity: 0.3,
+                        scale: 0.95,
+                        duration: 0.5,
+                        ease: "power2.in"
+                    });
+                    window.scrollTo({ top: nextCard.offsetTop - 100, behavior: 'smooth' });
+                }
+            }
+        });
+
+        // Background shimmer effect
+        gsap.to('body', {
+            background: `linear-gradient(45deg, hsl(0, 70%, 60%), hsl(36, 70%, 60%), hsl(72, 70%, 60%))`,
+            repeat: -1,
+            yoyo: true,
+            duration: 15,
+            ease: "none"
+        });
+
+        // Header glow animation
+        gsap.to('.header h1', {
+            textShadow: '0 0 15px rgba(255, 255, 255, 0.7), 0 0 25px rgba(255, 255, 255, 0.5)',
+            repeat: -1,
+            yoyo: true,
+            duration: 2.5,
+            ease: "power1.inOut"
+        });
+
+        document.addEventListener('click', initAudio, { once: true });
+    </script>
+</body>
+</html>
