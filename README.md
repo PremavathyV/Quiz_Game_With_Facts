@@ -19,21 +19,8 @@ A fun, interactive quiz application built to test general knowledge, featuring s
   - Confetti bursts upon correct answers.
   - Smooth transitions between questions.
   - Progress bar updates.
-
-## 🚀 Getting Started
-
-### Prerequisites
-You need a modern web browser to run this application. No backend server is required.
-
-### Installation
-Clone the repository:
-
-```bash
-git clone [Your Repository URL]
-cd knowledge-quiz-game
-
-
-## 👩‍💻 Author
+ 
+  ## 👩‍💻 Author
 
 - **Premavathy V**  
 - 📧 Email: [vprema376@gmail.com](mailto:vprema376@gmail.com)  
@@ -49,3 +36,22 @@ Contributions are welcome!
 - Fork this repo  
 - Add new quotes or features  
 - Create a pull request  
+
+
+## 🚀 Getting Started
+
+### Prerequisites
+You need a modern web browser to run this application. No backend server is required.
+
+### Installation
+Clone the repository:
+
+```bash
+git clone [Your Repository URL]
+cd knowledge-quiz-game
+
+
+
+
+
+
